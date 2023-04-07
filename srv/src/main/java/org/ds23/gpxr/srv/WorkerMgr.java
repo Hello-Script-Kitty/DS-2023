@@ -18,12 +18,12 @@ public class WorkerMgr {
   /**
    * Initialize with the required count of workers (will take some time to start and initialize each worker)
    *
-   * @param wcount Count of required workers
+   * @param workerCount Count of required workers
    */
-  WorkerMgr(int wcount) {
-    _pl = new ArrayList<>(wcount);
+  WorkerMgr(int workerCount) {
+    _pl = new ArrayList<>(workerCount);
     //start workers
-    for (int i = 0; i < wcount; i++) {
+    for (int i = 0; i < workerCount; i++) {
       logger.info("Launching worker #" + i);
       _pl.add(new Worker());
     }
