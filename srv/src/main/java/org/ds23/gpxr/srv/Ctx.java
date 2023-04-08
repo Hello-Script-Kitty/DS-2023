@@ -6,8 +6,10 @@ import java.util.Properties;
  * Server Context
  */
 class Ctx extends Properties {
-  static final String WORKER_COUNT = "worker-count";
-  static final int WORKER_COUNT_DEF = 5;
+  static final String SRV_PORT = "srv-port";
+  static final int SRV_PORT_DEF = 8080;
+  static final String WM_PORT = "wm-port";
+  static final int WM_PORT_DEF = 8081;
   private static Ctx _i = new Ctx();
 
   private Ctx() {

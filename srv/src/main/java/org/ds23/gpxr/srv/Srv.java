@@ -15,14 +15,15 @@ public class Srv {
 
   private WorkerMgr wm;
   private static Srv app;
+  private ActivityMgr activities = new ActivityMgr();
 
   private Srv() {
-    //launch workers
-    int wcount = Ctx.get().getInt(Ctx.WORKER_COUNT, Ctx.WORKER_COUNT_DEF);
-    logger.info("Worker count: " + wcount);
+    //launch worker manager
+    int wm_port = Ctx.get().getInt(Ctx.WM_PORT, Ctx.WM_PORT_DEF);
+    logger.info("Worker control port: " + wm_port);
 
-    wm = new WorkerMgr(wcount);
-    //start listener
+    wm = new WorkerMgr(wm_port);
+    //start mobile app listener
   }
 
   public static void main(String[] args) throws IOException {
@@ -37,4 +38,6 @@ public class Srv {
     //start server
     app = new Srv();
   }
+
+
 }

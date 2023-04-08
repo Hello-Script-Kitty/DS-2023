@@ -4,7 +4,8 @@ package org.ds23.gpxr.srv;
  * Reduction Workload
  */
 public class RedWork {
-  String id;
+  String wlId;
 
 //  Workload work;
+  String workload;
 }
