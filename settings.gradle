@@ -14,4 +14,4 @@ pluginManagement {
 }
 
 rootProject.name = 'gpxr'
-include('srv', 'worker', 'utilities')
+include('srv', 'worker', 'utilities', 'common')

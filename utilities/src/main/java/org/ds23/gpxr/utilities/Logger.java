@@ -1,7 +1,8 @@
 package org.ds23.gpxr.utilities;
 
 /**
- * Log4J2-like logger (can be replaced, with minimal changes, with a real Log4J2 logger)
+ * Log4J2-like logger (can be replaced, with minimal changes, with a real Log4J2 logger). We implement this in order
+ * to have a way of outputting messages to the console (not proper logging).
  */
 public class Logger {
   private final String c;

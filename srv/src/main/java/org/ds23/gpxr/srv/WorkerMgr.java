@@ -10,7 +10,10 @@ import java.net.Socket;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
+import java.util.concurrent.ThreadPoolExecutor;
 
 /**
  * Worker Manager
@@ -26,7 +29,7 @@ public class WorkerMgr {
   private List<Worker> _pl;
   private int _port;
   private ServerSocket _srv;
-
+  private ExecutorService execSrv = Executors.newFixedThreadPool(4);
   /**
    * Initialize with the control port
    *
@@ -35,7 +38,7 @@ public class WorkerMgr {
   WorkerMgr(int port) throws IOException {
     _pl = new ArrayList<>();
     _port = port;
-    //launch control server
+    //launch control service
     _srv = new ServerSocket(_port);
     _srv.setReuseAddress(true);
     _listener = new Thread(new Srv());
@@ -92,6 +95,10 @@ public class WorkerMgr {
         try {
           Socket c = _srv.accept();
           //FIXME spawn thread for worker subscription
+          execSrv.execute( () -> {
+            //handle enrolment msg
+
+          });
         } catch (IOException e) {
           logger.error("Failed to accept connection");
         }
