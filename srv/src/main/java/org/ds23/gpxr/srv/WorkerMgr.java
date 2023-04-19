@@ -53,6 +53,7 @@ public class WorkerMgr {
    */
   List<Future<RedRslt>> submitReductions(List<RedWork> workloads) {
     //FIXME Implement
+    return null;
   }
 
   /**
@@ -63,6 +64,7 @@ public class WorkerMgr {
    */
   Future<RedRslt> submitReduction(RedWork workload) {
     //FIXME Implement
+    return null;
   }
 
   /**

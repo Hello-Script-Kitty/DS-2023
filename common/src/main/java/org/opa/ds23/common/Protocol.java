@@ -2,6 +2,7 @@ package org.opa.ds23.common;
 
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
+import java.io.IOException;
 
 /**
  * "Implements" the communication protocol.
@@ -19,8 +20,11 @@ public class Protocol {
    * @param os The output stream
    * @param data The data to send
    */
-  public static void send(DataOutputStream os, byte[] data) {
+  public static void send(DataOutputStream os, byte[] data) throws IOException {
     //fixme assemble the message
+    int len = data.length;
+    os.writeInt(len);
+    os.write(data);
   }
 
   /**
@@ -30,8 +34,10 @@ public class Protocol {
    * @param is The input stream
    * @return The data of the message
    */
-  public static byte[] receive(DataInputStream is) {
+  public static byte[] receive(DataInputStream is) throws IOException {
     //fixme decompose the message and return the data
-    return null;
+    int len = is.readInt();
+    byte[] buf = is.readNBytes(len);
+    return buf;
   }
 }
