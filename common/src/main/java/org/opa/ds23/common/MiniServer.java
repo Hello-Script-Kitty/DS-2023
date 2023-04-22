@@ -1,5 +1,6 @@
 package org.opa.ds23.common;
 
+import org.ds23.gpxr.utilities.Exceptions;
 import org.ds23.gpxr.utilities.LogManager;
 import org.ds23.gpxr.utilities.Logger;
 
@@ -23,6 +24,7 @@ public class MiniServer {
   public MiniServer(int port, Consumer<byte[]> handler) throws IOException {
     if (handler == null)
       throw new IllegalArgumentException("Handler is null");
+    logger.debug("Starting MiniServer");
     _port = port;
     _handler = handler;
     _srv = new ServerSocket(_port);
@@ -33,22 +35,26 @@ public class MiniServer {
   }
 
   public void shutdown() throws IOException {
-//    _listener.interrupt();
+    logger.debug("Stopping MiniServer");
+    _listener.interrupt();
+//    _listener.shutdown = true;
     _srv.close();
     _execSrv.shutdownNow();
   }
 
   private class Srv extends Thread {
 
-    boolean shutdown = false;
+    volatile boolean shutdown = false;
 
     @Override
     public void run() {
       while (!shutdown && !isInterrupted()) {
         try {
+          logger.debug("Waiting for connection");
           Socket c = _srv.accept();
           //FIXME spawn thread for worker subscription
           _execSrv.execute(() -> {
+            logger.debug("Connected");
             while (c.isConnected()) {
               //handle message
               try {
@@ -57,9 +63,11 @@ public class MiniServer {
                 throw new RuntimeException(e);
               }
             }
+            logger.debug("Disconnected");
           });
         } catch (IOException e) {
-          logger.error("Failed to accept connection");
+          //server socket has failed, probably closed
+          //logger.error("Failed to accept connection\r\n" + Exceptions.getStackTrace(e));
         }
       }
     }
