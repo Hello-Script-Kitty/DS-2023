@@ -1,13 +1,19 @@
-package org.opa.ds23.common;
+package org.opa.ds23.common.data;
 
+import java.io.Serial;
 import java.io.Serializable;
 
 /**
  * Results of a reduction on an activity chunk
  */
 public class ReductionChunk implements Serializable {
+  @Serial
   private static final long serialVersionUID = -2684467689749142801L;
 
+  /**
+   * Id of submitted activity chunk
+   */
+  public String chunkId;
   /**
    * Intervals reduced
    */
@@ -17,7 +23,7 @@ public class ReductionChunk implements Serializable {
    */
   public float totDist;
   /**
-   * Average spedd
+   * Average speed
    */
   public float avgSpeed;
   /**

@@ -1,6 +1,5 @@
-package org.opa.ds23.common;
+package org.opa.ds23.common.net;
 
-import org.ds23.gpxr.utilities.Exceptions;
 import org.ds23.gpxr.utilities.LogManager;
 import org.ds23.gpxr.utilities.Logger;
 
@@ -10,6 +9,7 @@ import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.ThreadFactory;
 import java.util.function.Consumer;
 
 public class MiniServer {
@@ -17,7 +17,8 @@ public class MiniServer {
 
   private final ServerSocket _srv;
   private int _port;
-  private ExecutorService _execSrv = Executors.newFixedThreadPool(4);
+  private ExecutorService _execSrv = Executors.newFixedThreadPool(50);
+  ThreadFactory _tf = Executors.defaultThreadFactory();
   private final Srv _listener;
   private Consumer<byte[]> _handler;
 
@@ -42,9 +43,12 @@ public class MiniServer {
     _execSrv.shutdownNow();
   }
 
+  /**
+   * The Srv Thread waits for connections and delegates each new connection to
+   */
   private class Srv extends Thread {
 
-    volatile boolean shutdown = false;
+    private volatile boolean shutdown = false;
 
     @Override
     public void run() {
@@ -52,7 +56,8 @@ public class MiniServer {
         try {
           logger.debug("Waiting for connection");
           Socket c = _srv.accept();
-          //FIXME spawn thread for worker subscription
+          //handle connection in separate thread
+
           _execSrv.execute(() -> {
             logger.debug("Connected");
             while (c.isConnected()) {

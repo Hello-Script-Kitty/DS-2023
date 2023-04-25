@@ -1,4 +1,4 @@
-package org.opa.ds23.common;
+package org.opa.ds23.common.net;
 
 import java.io.DataInputStream;
 import java.io.DataOutputStream;

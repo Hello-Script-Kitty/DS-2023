@@ -1,4 +1,4 @@
-package org.opa.ds23.common;
+package org.opa.ds23.common.net;
 
 import org.junit.jupiter.api.*;
 
@@ -31,7 +31,7 @@ public class ProtocolTest {
   @Test
   public void test1() throws Exception {
     Thread.sleep(3000);
-    try (MiniClient client = new MiniClient(3800)) {
+    try (MiniClient client = new MiniClient(3800, null)) {
       byte[] data = new String(MSG1).getBytes(StandardCharsets.UTF_8);
       client.send(data);
       Thread.sleep(1000);
