@@ -1,4 +1,4 @@
-package org.ds23.gpxr.utilities.math;
+package org.opa.ds23.gpxr.utilities.math;
 
 /**
  * Various GIS calculations

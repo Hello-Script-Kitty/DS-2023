@@ -1,7 +1,7 @@
-package org.ds23.gpxr.srv;
+package org.opa.ds23.gpxr.srv;
 
-import org.ds23.gpxr.utilities.LogManager;
-import org.ds23.gpxr.utilities.Logger;
+import org.opa.ds23.gpxr.utilities.LogManager;
+import org.opa.ds23.gpxr.utilities.Logger;
 
 import java.io.File;
 import java.io.FileReader;

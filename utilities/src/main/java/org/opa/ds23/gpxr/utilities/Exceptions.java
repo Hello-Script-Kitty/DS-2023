@@ -1,4 +1,4 @@
-package org.ds23.gpxr.utilities;
+package org.opa.ds23.gpxr.utilities;
 
 import java.io.PrintWriter;
 import java.io.StringWriter;

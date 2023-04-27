@@ -16,6 +16,6 @@ public class Waypoint implements Serializable {
 
   public Waypoint(double lat, double lon, float ele, LocalDateTime time) {
     coordinate = new Coordinate3D(lat, lon, ele);
-    timestamp = time;
+//    timestamp = time;
   }
 }

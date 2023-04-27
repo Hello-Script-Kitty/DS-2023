@@ -1,7 +1,7 @@
-package org.ds23.gpxr.srv;
+package org.opa.ds23.gpxr.srv;
 
-import org.ds23.gpxr.utilities.LogManager;
-import org.ds23.gpxr.utilities.Logger;
+import org.opa.ds23.gpxr.utilities.LogManager;
+import org.opa.ds23.gpxr.utilities.Logger;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
@@ -13,7 +13,6 @@ import java.util.Map;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
-import java.util.concurrent.ThreadPoolExecutor;
 
 /**
  * Worker Manager

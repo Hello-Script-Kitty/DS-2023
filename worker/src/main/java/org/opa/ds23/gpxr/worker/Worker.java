@@ -1,4 +1,4 @@
-package org.opa.ds23.worker;
+package org.opa.ds23.gpxr.worker;
 
 /**
  * Main Worker Class (worker app entry point)

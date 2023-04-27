@@ -1,4 +1,4 @@
-package org.ds23.gpxr.utilities;
+package org.opa.ds23.gpxr.utilities;
 
 /**
  * Log4J2-like logger (can be replaced, with minimal changes, with a real Log4J2 logger). We implement this in order

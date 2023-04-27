@@ -1,4 +1,4 @@
-package org.ds23.gpxr.srv;
+package org.opa.ds23.gpxr.srv;
 
 import org.opa.ds23.gpxr.common.data.Activity;
 

@@ -1,4 +1,4 @@
-package org.ds23.gpxr.srv;
+package org.opa.ds23.gpxr.srv;
 
 import java.util.Properties;
 
