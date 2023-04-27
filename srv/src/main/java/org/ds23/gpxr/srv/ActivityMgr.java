@@ -1,5 +1,7 @@
 package org.ds23.gpxr.srv;
 
+import org.opa.ds23.gpxr.common.data.Activity;
+
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;

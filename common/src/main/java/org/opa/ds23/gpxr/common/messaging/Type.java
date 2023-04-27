@@ -1,4 +1,6 @@
-package org.opa.ds23.common.messaging;
+package org.opa.ds23.gpxr.common.messaging;
+
+import org.opa.ds23.gpxr.common.data.ActivityChunk;
 
 /**
  * Declares message types. Dictates which class the message byte content will deserialize to.
@@ -13,11 +15,11 @@ public enum Type {
    */
   WorkerStatus,
   /**
-   * Reduction result. Deserializes to {@link org.opa.ds23.common.data.ReductionChunk}.
+   * Reduction result. Deserializes to {@link org.opa.ds23.gpxr.common.data.ReductionChunk}.
    */
   ReductionChunk,
   /**
-   * Workload submission. Deserializes to {@link org.opa.ds23.common.data.ActivityChunk}.
+   * Workload submission. Deserializes to {@link ActivityChunk}.
    */
   Workload;
 }

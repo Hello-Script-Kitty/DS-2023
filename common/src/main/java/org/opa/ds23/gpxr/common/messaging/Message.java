@@ -1,4 +1,4 @@
-package org.opa.ds23.common.messaging;
+package org.opa.ds23.gpxr.common.messaging;
 
 import java.io.Serializable;
 

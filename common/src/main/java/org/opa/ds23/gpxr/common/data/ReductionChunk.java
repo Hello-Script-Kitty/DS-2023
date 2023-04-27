@@ -1,4 +1,4 @@
-package org.opa.ds23.common.data;
+package org.opa.ds23.gpxr.common.data;
 
 import java.io.Serial;
 import java.io.Serializable;

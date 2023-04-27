@@ -1,4 +1,4 @@
-package org.opa.ds23.common.net;
+package org.opa.ds23.gpxr.common.net;
 
 import org.ds23.gpxr.utilities.LogManager;
 import org.ds23.gpxr.utilities.Logger;

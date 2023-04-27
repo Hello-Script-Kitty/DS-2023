@@ -1,4 +1,4 @@
-package org.opa.ds23.common.data;
+package org.opa.ds23.gpxr.common.data;
 
 import java.io.Serial;
 import java.io.Serializable;
@@ -12,4 +12,10 @@ public class Coordinate3D implements Serializable {
   double lat;
   double lon;
   double elevation;
+
+  public Coordinate3D(double lat, double lon, float ele) {
+    this.lat = lat;
+    this.lon = lon;
+    this.elevation = ele;
+  }
 }

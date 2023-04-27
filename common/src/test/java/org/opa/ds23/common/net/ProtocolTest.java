@@ -1,6 +1,8 @@
 package org.opa.ds23.common.net;
 
 import org.junit.jupiter.api.*;
+import org.opa.ds23.gpxr.common.net.MiniClient;
+import org.opa.ds23.gpxr.common.net.MiniServer;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
