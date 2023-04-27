@@ -1,5 +1,7 @@
 package org.opa.ds23.gpxr.srv;
 
+import org.opa.ds23.gpxr.common.data.ActivityChunk;
+import org.opa.ds23.gpxr.common.data.ReductionChunk;
 import org.opa.ds23.gpxr.utilities.LogManager;
 import org.opa.ds23.gpxr.utilities.Logger;
 
@@ -50,7 +52,7 @@ public class WorkerMgr {
    * @param workloads A list of workloads to submit
    * @return A list of Futures for the results
    */
-  List<Future<RedRslt>> submitReductions(List<RedWork> workloads) {
+  List<Future<ReductionChunk>> submitReductions(List<ActivityChunk> workloads) {
     //FIXME Implement
     return null;
   }
@@ -61,7 +63,7 @@ public class WorkerMgr {
    * @param workload The workload
    * @return A Future for the result
    */
-  Future<RedRslt> submitReduction(RedWork workload) {
+  Future<ReductionChunk> submitReduction(ActivityChunk workload) {
     //FIXME Implement
     return null;
   }
@@ -73,7 +75,7 @@ public class WorkerMgr {
    */
   private class Worker implements Runnable {
     private InetSocketAddress addr; //worker control address/port
-    private Map<String, RedWork> workloads; //workloads assigned to worker (currently working)
+    private Map<String, ActivityChunk> workloads; //workloads assigned to worker (currently working)
 
     public Worker(InetSocketAddress addr) {
       this.addr = addr;
