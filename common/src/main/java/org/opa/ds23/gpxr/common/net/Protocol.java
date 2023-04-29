@@ -1,8 +1,6 @@
 package org.opa.ds23.gpxr.common.net;
 
-import java.io.DataInputStream;
-import java.io.DataOutputStream;
-import java.io.IOException;
+import java.io.*;
 
 /**
  * "Implements" the communication protocol.
@@ -27,6 +25,10 @@ public class Protocol {
     os.write(data);
   }
 
+  public static void send(OutputStream outputStream, byte[] msg) throws IOException {
+    send(new DataOutputStream(outputStream), msg);
+  }
+
   /**
    * Receive a message over an input stream. The message consists of a header and the data. The data is an arbitrary
    * byte array of known length.
@@ -39,5 +41,9 @@ public class Protocol {
     int len = is.readInt();
     byte[] buf = is.readNBytes(len);
     return buf;
+  }
+
+  public static byte[] receive(InputStream inputStream) throws IOException {
+    return receive(new DataInputStream(inputStream));
   }
 }

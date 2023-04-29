@@ -17,7 +17,7 @@ public class MiniServer {
 
   private final ServerSocket _srv;
   private int _port;
-  private ExecutorService _execSrv = Executors.newFixedThreadPool(50);
+  private ExecutorService _execSrv = Executors.newCachedThreadPool();
   ThreadFactory _tf = Executors.defaultThreadFactory();
   private final Srv _listener;
   private Consumer<byte[]> _handler;
@@ -65,7 +65,7 @@ public class MiniServer {
               try {
                 _handler.accept(Protocol.receive(new DataInputStream(c.getInputStream())));
               } catch (IOException e) {
-                throw new RuntimeException(e);
+//                throw new RuntimeException(e);
               }
             }
             logger.debug("Disconnected");
