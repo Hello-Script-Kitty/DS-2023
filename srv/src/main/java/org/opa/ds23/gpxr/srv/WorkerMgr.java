@@ -2,19 +2,18 @@ package org.opa.ds23.gpxr.srv;
 
 import org.opa.ds23.gpxr.common.data.ActivityChunk;
 import org.opa.ds23.gpxr.common.data.ReductionChunk;
+import org.opa.ds23.gpxr.common.messaging.Message;
+import org.opa.ds23.gpxr.common.messaging.Type;
+import org.opa.ds23.gpxr.common.net.Connection;
+import org.opa.ds23.gpxr.utilities.Exceptions;
 import org.opa.ds23.gpxr.utilities.LogManager;
 import org.opa.ds23.gpxr.utilities.Logger;
 
 import java.io.IOException;
-import java.net.InetSocketAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
+import java.util.*;
+import java.util.concurrent.*;
 
 /**
  * Worker Manager
@@ -28,19 +27,23 @@ public class WorkerMgr {
   private final Thread _listener;
 
   private List<Worker> _pl;
-  private int _port;
   private ServerSocket _srv;
-  private ExecutorService execSrv = Executors.newFixedThreadPool(4);
+
+  //hold available workers
+  private final BlockingQueue<WorkerHandler> _workers = new LinkedBlockingQueue<>();
+  //hold result futures
+  private final ConcurrentMap<String, CompletableFuture<ReductionChunk>> _results = new ConcurrentHashMap<>();
+  private final ExecutorService execSrv = Executors.newCachedThreadPool();
+
   /**
-   * Initialize with the control port
+   * Initialize with the comm port
    *
    * @param port Worker manager control port
    */
   WorkerMgr(int port) throws IOException {
     _pl = new ArrayList<>();
-    _port = port;
     //launch control service
-    _srv = new ServerSocket(_port);
+    _srv = new ServerSocket(port);
     _srv.setReuseAddress(true);
     _listener = new Thread(new Srv());
     _listener.run();
@@ -52,9 +55,12 @@ public class WorkerMgr {
    * @param workloads A list of workloads to submit
    * @return A list of Futures for the results
    */
-  List<Future<ReductionChunk>> submitReductions(List<ActivityChunk> workloads) {
-    //FIXME Implement
-    return null;
+  synchronized List<CompletableFuture<ReductionChunk>> submitReductions(List<ActivityChunk> workloads) {
+    List<CompletableFuture<ReductionChunk>> fl = new ArrayList<>(workloads.size());
+    for (ActivityChunk chunk : workloads) {
+      fl.add(submitReduction(chunk));
+    }
+    return fl;
   }
 
   /**
@@ -63,22 +69,49 @@ public class WorkerMgr {
    * @param workload The workload
    * @return A Future for the result
    */
-  Future<ReductionChunk> submitReduction(ActivityChunk workload) {
-    //FIXME Implement
-    return null;
+  synchronized CompletableFuture<ReductionChunk> submitReduction(ActivityChunk workload) {
+    CompletableFuture<ReductionChunk> f = new CompletableFuture<>();
+    _results.put(workload.chunkId, f);
+    return f;
+  }
+
+  /**
+   * Round-robin submission to workers
+   *
+   * @param workload
+   */
+  private void send(ActivityChunk workload) throws IOException, InterruptedException {
+    //get next worker
+    WorkerHandler w = _workers.remove();
+    //send workload
+    w.send(workload);
+    //put worker at the end of the queue
+    _workers.offer(w);
+  }
+
+  private synchronized void handleChunk(ReductionChunk chunk) {
+    CompletableFuture<ReductionChunk> f = _results.remove(chunk.chunkId);
+    if (f != null)
+      if (f.isCancelled() || f.isCompletedExceptionally())
+        logger.error("ReductionChuck received for canceled or excepted future");
+      else
+        f.complete(chunk);
+    else
+      logger.error("ReductionChuck received for unknown chunk");
   }
 
   /**
    * Worker controller
    * <p>
-   * A controller will send workloads to a worker and listen for responses
+   * A controller handles communications with a particular worker, sends workloads to a worker and listens for
+   * responses.
    */
   private class Worker implements Runnable {
-    private InetSocketAddress addr; //worker control address/port
+    private Socket socket; //worker control address/port
     private Map<String, ActivityChunk> workloads; //workloads assigned to worker (currently working)
 
-    public Worker(InetSocketAddress addr) {
-      this.addr = addr;
+    public Worker(Socket socket) {
+      this.socket = socket;
     }
 
     @Override
@@ -97,11 +130,11 @@ public class WorkerMgr {
       while (true) {
         try {
           Socket c = _srv.accept();
-          //FIXME spawn thread for worker subscription
-          execSrv.execute( () -> {
-            //handle enrolment msg
-
-          });
+          //spawn handling mechanism
+          WorkerHandler ch = new WorkerHandler(c);
+          _workers.add(ch); //keep worker
+//          Connection con = new Connection(c, ch::messageHandler);
+//          execSrv.submit(con);
         } catch (IOException e) {
           logger.error("Failed to accept connection");
         }
@@ -110,18 +143,51 @@ public class WorkerMgr {
   }
 
   /**
-   * Handle worker subscription message
+   * Handles worker communications
    */
-  private class ClientHandler implements Runnable {
-    Socket c;
+  private class WorkerHandler {
+    final Connection con;
+    final String id = UUID.randomUUID().toString();
 
-    public ClientHandler(Socket client) {
-      c = client;
+    public WorkerHandler(Socket c) {
+      con = new Connection(c, this::messageHandler, this::closeHandler);
+      execSrv.submit(con);
     }
 
-    @Override
-    public void run() {
-      //FIXME handle worker subscription message
+    private void closeHandler() {
+      //remove self from available workers
+      _workers.remove(this);
+    }
+
+    /**
+     * Handles incoming message from worker
+     *
+     * @param msg The incoming message
+     */
+    public void messageHandler(byte[] msg) {
+      try {
+        Message m = Message.deserialize(msg);
+        if (Objects.requireNonNull(m.type) == Type.ReductionChunk) {
+          handleChunk(ReductionChunk.deserialize(m.data));
+        } else {
+          logger.debug("Unhandled worker message type : " + m.type);
+        }
+      } catch (IOException | ClassNotFoundException e) {
+        logger.error("Error deserializing message. Ignoring message.");
+        logger.error(Exceptions.getStackTrace(e));
+      }
+    }
+
+    /**
+     * Send {@link ActivityChunk} to Worker
+     *
+     * @param workload The {@link ActivityChunk} to send
+     * @throws IOException
+     * @throws InterruptedException
+     */
+    public synchronized void send(ActivityChunk workload) throws IOException, InterruptedException {
+      Message m = new Message(Type.Workload, workload);
+      con.send(m.serialize());
     }
   }
 }

@@ -43,7 +43,7 @@ public class ProtocolTest {
     System.out.println("Opening client connection");
     try (Socket sock = new Socket("localhost", 3800)) {
       System.out.println("Initializing connection object");
-      Connection connection = new Connection(sock, null);
+      Connection connection = new Connection(sock, null, null);
       System.out.println("Starting connection thread");
 //      Thread ct = tf.newThread(connection);
       execSrv.submit(connection);

@@ -17,10 +17,9 @@ public class MiniServer {
 
   private final ServerSocket _srv;
   private int _port;
-  private ExecutorService _execSrv = Executors.newCachedThreadPool();
-  ThreadFactory _tf = Executors.defaultThreadFactory();
+  private final ExecutorService _execSrv = Executors.newCachedThreadPool();
   private final Srv _listener;
-  private Consumer<byte[]> _handler;
+  private final Consumer<byte[]> _handler;
 
   public MiniServer(int port, Consumer<byte[]> handler) throws IOException {
     if (handler == null)
@@ -32,7 +31,7 @@ public class MiniServer {
     _srv.setReuseAddress(true);
 
     _listener = new Srv();
-    _execSrv.submit(_listener);
+    _execSrv.execute(_listener);
   }
 
   public void shutdown() throws IOException {

@@ -4,6 +4,7 @@ import java.io.Serial;
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
 
 /**
  * Represents a chunk of waypoint data on which a worker should make calculations and return results.
@@ -14,7 +15,7 @@ public class ActivityChunk implements Serializable {
   /**
    * The id of this submission
    */
-  public String chunkId;
+  public final String chunkId = UUID.randomUUID().toString();
   /**
    * The submitted waypoint data
    */

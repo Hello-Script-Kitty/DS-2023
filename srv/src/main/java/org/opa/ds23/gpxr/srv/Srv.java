@@ -22,7 +22,11 @@ public class Srv {
     int wm_port = Ctx.get().getInt(Ctx.WM_PORT, Ctx.WM_PORT_DEF);
     logger.info("Worker control port: " + wm_port);
 
-    wm = new WorkerMgr(wm_port);
+    try {
+      wm = new WorkerMgr(wm_port);
+    } catch (IOException e) {
+      throw new RuntimeException(e);
+    }
     //start mobile app listener
   }
 
@@ -38,6 +42,4 @@ public class Srv {
     //start server
     app = new Srv();
   }
-
-
 }

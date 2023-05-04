@@ -18,13 +18,15 @@ public class Connection implements Runnable {
 
   private final Socket _s;
   private final Consumer<byte[]> _handler;
+  private final Runnable _closeHandler;
   private volatile boolean shutdown = false;
   SynchronousQueue<byte[]> _out = new SynchronousQueue<>(true);
   private final ExecutorService _execSrv = Executors.newCachedThreadPool();
 
-  public Connection(Socket socket, Consumer<byte[]> msgHandler) {
+  public Connection(Socket socket, Consumer<byte[]> msgHandler, Runnable closeHandler) {
     _s = socket;
     _handler = msgHandler;
+    _closeHandler = closeHandler;
   }
 
   /**
@@ -89,6 +91,8 @@ public class Connection implements Runnable {
       //fail if connection is down or thread has been interrupted
       shutdown &= _s.isConnected() && !Thread.currentThread().isInterrupted();
     }
+    if (_closeHandler != null)
+      _closeHandler.run();
     logger.debug("Listening loop was exited");
   }
 }

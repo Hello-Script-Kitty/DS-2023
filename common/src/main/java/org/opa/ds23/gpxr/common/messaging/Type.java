@@ -10,10 +10,10 @@ public enum Type {
    * Activity message. Deserializes to {@link ActivityMsg}.
    */
   Activity,
-  /**
-   * Worker status message. Deserializes to {@link WorkerStatusMsg}.
-   */
-  WorkerStatus,
+//  /**
+//   * Worker status message. Deserializes to {@link WorkerStatusMsg}.
+//   */
+//  WorkerStatus,
   /**
    * Reduction result. Deserializes to {@link org.opa.ds23.gpxr.common.data.ReductionChunk}.
    */
