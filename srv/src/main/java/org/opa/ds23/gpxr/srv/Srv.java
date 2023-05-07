@@ -69,6 +69,7 @@ public class Srv {
   }
 
   private void updateActivity(Activity act, CompletableFuture<ReductionResult>[] all) {
+    logger.debug("Reducing results");
     List<ReductionResult> results = new ArrayList<>(all.length);
     for (CompletableFuture<ReductionResult> cf_res : all) {
       try {
@@ -84,6 +85,7 @@ public class Srv {
       return p;
     });
     r.calcAvgs();
+    logger.debug("Updating activity with totals");
     act.result = r;
   }
 
@@ -111,6 +113,7 @@ public class Srv {
 
     private void connectionHandler(Socket c) {
       try {
+        logger.debug("Got connection from a mobile app");
         //get GPX data
         byte[] data = Protocol.receive(c.getInputStream());
         c.close();
@@ -125,10 +128,12 @@ public class Srv {
         synchronized (Ctx.activities) {
           Ctx.activities.put(act.id, act);
         }
+        logger.debug("Submitting activity to workers");
         //break into chunks
         List<ActivityChunk> chunks = DataUtils.toChunks(act, wm.size());
         //submit for processing
         CompletableFuture<ReductionResult>[] all = wm.submitReductions(chunks);
+        logger.debug("Waiting for results");
         try {
           CompletableFuture.allOf(all).get(5, TimeUnit.MINUTES);
         } catch (TimeoutException e) {

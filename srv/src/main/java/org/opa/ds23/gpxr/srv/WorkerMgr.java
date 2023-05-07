@@ -57,7 +57,7 @@ public class WorkerMgr {
    * @param workloads A list of workloads to submit
    * @return A list of Futures for the results
    */
-  synchronized CompletableFuture<ReductionResult>[] submitReductions(List<ActivityChunk> workloads) {
+  synchronized CompletableFuture<ReductionResult>[] submitReductions(List<ActivityChunk> workloads) throws IOException, InterruptedException {
     List<CompletableFuture<ReductionResult>> fl = new ArrayList<>(workloads.size());
     for (ActivityChunk chunk : workloads) {
       fl.add(submitReduction(chunk));
@@ -73,6 +73,11 @@ public class WorkerMgr {
    */
   synchronized CompletableFuture<ReductionResult> submitReduction(ActivityChunk workload) {
     CompletableFuture<ReductionResult> f = new CompletableFuture<>();
+    try {
+      send(workload);
+    } catch (IOException | InterruptedException e) {
+      f.completeExceptionally(e);
+    }
     _results.put(workload.chunkId, f);
     return f;
   }
