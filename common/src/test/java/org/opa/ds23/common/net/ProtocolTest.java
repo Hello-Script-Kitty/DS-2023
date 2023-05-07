@@ -12,6 +12,7 @@ import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadFactory;
+import java.util.concurrent.TimeUnit;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
@@ -39,26 +40,26 @@ public class ProtocolTest {
 
   @Test
   public void test1() throws Exception {
-    Thread.sleep(3000);
+    TimeUnit.SECONDS.sleep(3);
     System.out.println("Opening client connection");
     try (Socket sock = new Socket("localhost", 3800)) {
       System.out.println("Initializing connection object");
       Connection connection = new Connection(sock, null, null);
       System.out.println("Starting connection thread");
 //      Thread ct = tf.newThread(connection);
-      execSrv.submit(connection);
-      Thread.sleep(1000);
+      execSrv.execute(connection);
+      TimeUnit.SECONDS.sleep(1);
       System.out.println("Sending 1st message");
       byte[] data = new String(MSG1).getBytes(StandardCharsets.UTF_8);
       connection.send(data);
-      Thread.sleep(1000);
+      TimeUnit.SECONDS.sleep(1);
       System.out.println("Sending 2nd message");
       data = new String(MSG2).getBytes(StandardCharsets.UTF_8);
       connection.send(data);
-      Thread.sleep(1000);
+      TimeUnit.SECONDS.sleep(1);
       System.out.println("Shutting down connection");
       connection.shutdown();
-      Thread.sleep(1000);
+      TimeUnit.SECONDS.sleep(1);
 //      ct.join();
       execSrv.shutdownNow();
     }

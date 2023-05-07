@@ -21,24 +21,14 @@ public class Message implements Serializable {
   }
 
   public Message(Type type, Serializable o) throws IOException {
-    this(type, serialize(o));
-  }
-
-  private static byte[] serialize(Serializable o) throws IOException {
-    ByteArrayOutputStream baos = new ByteArrayOutputStream();
-    try (ObjectOutputStream oos = new ObjectOutputStream(baos)) {
-      oos.writeObject(o);
-    }
-    return baos.toByteArray();
+    this(type, Util.serialize(o));
   }
 
   public static Message deserialize(byte[] bytes) throws IOException, ClassNotFoundException {
-    try (ObjectInputStream ois = new ObjectInputStream(new ByteArrayInputStream(bytes))) {
-      return (Message) ois.readObject();
-    }
+    return (Message) Util.deserialize(bytes);
   }
 
   public byte[] serialize() throws IOException {
-    return serialize(this);
+    return Util.serialize(this);
   }
 }

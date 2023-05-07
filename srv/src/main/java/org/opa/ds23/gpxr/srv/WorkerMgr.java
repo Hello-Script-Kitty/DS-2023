@@ -1,7 +1,9 @@
 package org.opa.ds23.gpxr.srv;
 
+import org.opa.ds23.gpxr.common.data.Activity;
 import org.opa.ds23.gpxr.common.data.ActivityChunk;
-import org.opa.ds23.gpxr.common.data.ReductionChunk;
+import org.opa.ds23.gpxr.common.data.DataUtils;
+import org.opa.ds23.gpxr.common.data.ReductionResult;
 import org.opa.ds23.gpxr.common.messaging.Message;
 import org.opa.ds23.gpxr.common.messaging.Type;
 import org.opa.ds23.gpxr.common.net.Connection;
@@ -14,6 +16,7 @@ import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.*;
 import java.util.concurrent.*;
+import java.util.function.Supplier;
 
 /**
  * Worker Manager
@@ -32,8 +35,7 @@ public class WorkerMgr {
   //hold available workers
   private final BlockingQueue<WorkerHandler> _workers = new LinkedBlockingQueue<>();
   //hold result futures
-  private final ConcurrentMap<String, CompletableFuture<ReductionChunk>> _results = new ConcurrentHashMap<>();
-  private final ExecutorService execSrv = Executors.newCachedThreadPool();
+  private final ConcurrentMap<String, CompletableFuture<ReductionResult>> _results = new ConcurrentHashMap<>();
 
   /**
    * Initialize with the comm port
@@ -46,7 +48,7 @@ public class WorkerMgr {
     _srv = new ServerSocket(port);
     _srv.setReuseAddress(true);
     _listener = new Thread(new Srv());
-    _listener.run();
+    Ctx.es.execute(_listener);
   }
 
   /**
@@ -55,12 +57,12 @@ public class WorkerMgr {
    * @param workloads A list of workloads to submit
    * @return A list of Futures for the results
    */
-  synchronized List<CompletableFuture<ReductionChunk>> submitReductions(List<ActivityChunk> workloads) {
-    List<CompletableFuture<ReductionChunk>> fl = new ArrayList<>(workloads.size());
+  synchronized CompletableFuture<ReductionResult>[] submitReductions(List<ActivityChunk> workloads) {
+    List<CompletableFuture<ReductionResult>> fl = new ArrayList<>(workloads.size());
     for (ActivityChunk chunk : workloads) {
       fl.add(submitReduction(chunk));
     }
-    return fl;
+    return fl.toArray(new CompletableFuture[0]);
   }
 
   /**
@@ -69,8 +71,8 @@ public class WorkerMgr {
    * @param workload The workload
    * @return A Future for the result
    */
-  synchronized CompletableFuture<ReductionChunk> submitReduction(ActivityChunk workload) {
-    CompletableFuture<ReductionChunk> f = new CompletableFuture<>();
+  synchronized CompletableFuture<ReductionResult> submitReduction(ActivityChunk workload) {
+    CompletableFuture<ReductionResult> f = new CompletableFuture<>();
     _results.put(workload.chunkId, f);
     return f;
   }
@@ -89,8 +91,8 @@ public class WorkerMgr {
     _workers.offer(w);
   }
 
-  private synchronized void handleChunk(ReductionChunk chunk) {
-    CompletableFuture<ReductionChunk> f = _results.remove(chunk.chunkId);
+  private synchronized void handleChunk(ReductionResult chunk) {
+    CompletableFuture<ReductionResult> f = _results.remove(chunk.chunkId);
     if (f != null)
       if (f.isCancelled() || f.isCompletedExceptionally())
         logger.error("ReductionChuck received for canceled or excepted future");
@@ -98,6 +100,10 @@ public class WorkerMgr {
         f.complete(chunk);
     else
       logger.error("ReductionChuck received for unknown chunk");
+  }
+
+  public int size() {
+    return _workers.size();
   }
 
   /**
@@ -151,7 +157,7 @@ public class WorkerMgr {
 
     public WorkerHandler(Socket c) {
       con = new Connection(c, this::messageHandler, this::closeHandler);
-      execSrv.submit(con);
+      Ctx.es.execute(con);
     }
 
     private void closeHandler() {
@@ -167,8 +173,8 @@ public class WorkerMgr {
     public void messageHandler(byte[] msg) {
       try {
         Message m = Message.deserialize(msg);
-        if (Objects.requireNonNull(m.type) == Type.ReductionChunk) {
-          handleChunk(ReductionChunk.deserialize(m.data));
+        if (Objects.requireNonNull(m.type) == Type.ReductionResult) {
+          handleChunk(ReductionResult.deserialize(m.data));
         } else {
           logger.debug("Unhandled worker message type : " + m.type);
         }

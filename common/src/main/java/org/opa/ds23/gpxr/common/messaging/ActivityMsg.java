@@ -1,5 +1,6 @@
 package org.opa.ds23.gpxr.common.messaging;
 
+import java.io.IOException;
 import java.io.Serializable;
 
 /**
@@ -9,4 +10,12 @@ public class ActivityMsg implements Serializable {
   private static final long serialVersionUID = -2207495884028426181L;
 
   public String gpxContent;
+
+  public static ActivityMsg deserialize(byte[] data) throws IOException, ClassNotFoundException {
+    return (ActivityMsg) Util.deserialize(data);
+  }
+
+  public byte[] serialize() throws IOException {
+    return Util.serialize(this);
+  }
 }

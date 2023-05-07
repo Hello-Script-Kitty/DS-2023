@@ -8,6 +8,7 @@ import java.net.Socket;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.SynchronousQueue;
+import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 
 /**
@@ -51,18 +52,18 @@ public class Connection implements Runnable {
   public void run() {
     //launch sending thread
     logger.debug("Spawning send thread...");
-    _execSrv.submit(() -> {
+    _execSrv.execute(() -> {
       logger.debug("Starting sender loop");
       try {
         while (!shutdown) {
-          logger.debug("Polling for message to send");
+//          logger.debug("Polling for message to send");
           //we poll the queue at intervals so that we can also check the shutdown flag
           byte[] msg = _out.poll();
           if (msg != null) {
             logger.debug("Got outgoing message from queue");
             Protocol.send(_s.getOutputStream(), msg);
           } else
-            Thread.sleep(200);
+            TimeUnit.MILLISECONDS.sleep(200);
         }
         logger.debug("Sender loop terminated");
       } catch (InterruptedException e) {
@@ -81,7 +82,8 @@ public class Connection implements Runnable {
       try {
         byte[] msg = Protocol.receive(_s.getInputStream());
         logger.debug("Received message");
-        _handler.accept(msg);
+        if (_handler != null)
+          _handler.accept(msg);
       } catch (IOException e) {
 //        logger.error("Failed to send message through the socket");
 //        logger.error(Exceptions.getStackTrace(e));

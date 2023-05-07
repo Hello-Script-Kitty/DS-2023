@@ -23,10 +23,12 @@ public class Protocol {
     int len = data.length;
     os.writeInt(len);
     os.write(data);
+    os.flush();
   }
 
   public static void send(OutputStream outputStream, byte[] msg) throws IOException {
     send(new DataOutputStream(outputStream), msg);
+    outputStream.flush();
   }
 
   /**
@@ -44,6 +46,6 @@ public class Protocol {
   }
 
   public static byte[] receive(InputStream inputStream) throws IOException {
-    return receive(new DataInputStream(inputStream));
+    return receive(new DataInputStream(new BufferedInputStream(inputStream)));
   }
 }
