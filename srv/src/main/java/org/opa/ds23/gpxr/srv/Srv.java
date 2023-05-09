@@ -27,7 +27,6 @@ public class Srv {
   private WorkerMgr wm;
   private static Srv app;
   private final MobAppMgr appSrv;
-  //  private ActivityMgr activities = new ActivityMgr();
   private BlockingQueue<Activity> incoming = new LinkedBlockingQueue<>();
 
   private Srv() throws IOException, InterruptedException {
@@ -68,8 +67,14 @@ public class Srv {
     app = new Srv();
   }
 
+  /**
+   * Update {@link Activity} from {@link ReductionResult}s
+   *
+   * @param act The {@link Activity} to update
+   * @param all The related {@link ReductionResult}s
+   */
   private void updateActivity(Activity act, CompletableFuture<ReductionResult>[] all) {
-    logger.debug("Reducing results");
+    logger.debug("Reducing results for activity " + act.id);
     List<ReductionResult> results = new ArrayList<>(all.length);
     for (CompletableFuture<ReductionResult> cf_res : all) {
       try {
@@ -85,7 +90,18 @@ public class Srv {
       return p;
     });
     r.calcAvgs();
-    logger.debug("Updating activity with totals");
+    synchronized (logger) {
+      logger.debug("Activity results");
+      logger.debug("----------------");
+      logger.debug("Activity id: " + act.id);
+      logger.debug("Creator: " + act.creator);
+      logger.debug("Date: " + act.date);
+      logger.debug("Duration (sec): " + r.totTimeSec);
+      logger.debug("Distance (m): " + r.totDist);
+      logger.debug("Samples: " + r.intervals);
+      logger.debug("Avg speed (km/h): " + r.avgSpeed);
+      logger.debug("Total meters ascended: " + r.totClimb);
+    }
     act.result = r;
   }
 
@@ -105,7 +121,7 @@ public class Srv {
             //spawn simple handling mechanism
             Ctx.es.execute(() -> connectionHandler(c));
           } catch (IOException e) {
-            logger.error("Failed to accept connection");
+            logger.error("Failed to accept a connection. Ignoring.");
           }
         }
       });
@@ -137,16 +153,20 @@ public class Srv {
         try {
           CompletableFuture.allOf(all).get(5, TimeUnit.MINUTES);
         } catch (TimeoutException e) {
-          logger.error("Workload processing timed out");
-          logger.error("Activity id: " + act.id);
-          logger.error("Activity creator: " + act.creator);
-          logger.error("Activity date: " + act.date);
+          synchronized (logger) {
+            logger.error("Workload processing timed out");
+            logger.error("Activity id: " + act.id);
+            logger.error("Activity creator: " + act.creator);
+            logger.error("Activity date: " + act.date);
+          }
         } catch (ExecutionException e) {
-          logger.error("Some workload processing experienced an error");
-          logger.error("Activity id: " + act.id);
-          logger.error("Activity creator: " + act.creator);
-          logger.error("Activity date: " + act.date);
-          logger.error(Exceptions.getStackTrace(e));
+          synchronized (logger) {
+            logger.error("Some workload processing experienced an error");
+            logger.error("Activity id: " + act.id);
+            logger.error("Activity creator: " + act.creator);
+            logger.error("Activity date: " + act.date);
+            logger.error(Exceptions.getStackTrace(e));
+          }
         }
         //reduce results -> update activity
         updateActivity(act, all);

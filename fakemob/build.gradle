@@ -15,7 +15,7 @@ dependencies {
 
 application {
     // Define the main class for the application.
-    mainClass = 'org.ds23.gpxr.worker.Worker'
+    mainClass = 'org.ds23.gpxr.worker.FakeMob'
 }
 
 test {

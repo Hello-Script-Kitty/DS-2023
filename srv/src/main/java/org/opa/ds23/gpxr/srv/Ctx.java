@@ -20,7 +20,7 @@ class Ctx extends Properties {
   static final Map<String, Activity> activities = new HashMap<>(); //all submitted activities registry
   //cached thread pool for all server short-lived threads
   static final ExecutorService es = Executors.newCachedThreadPool();
-  private static Ctx _i = new Ctx();
+  private static final Ctx _i = new Ctx();
 
   private Ctx() {
   }
