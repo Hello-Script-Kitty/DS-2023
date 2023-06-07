@@ -14,7 +14,7 @@ import java.util.concurrent.Executors;
  */
 class Ctx extends Properties {
   static final String SRV_PORT = "srv-port";
-  static final int SRV_PORT_DEF = 8080;
+  static final int SRV_PORT_DEF = 8000;
   static final String WM_PORT = "wm-port";
   static final int WM_PORT_DEF = 8081;
   static final Map<String, Activity> activities = new HashMap<>(); //all submitted activities registry

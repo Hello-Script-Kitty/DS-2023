@@ -37,7 +37,8 @@ public class Srv {
     wm = new WorkerMgr(wm_port);
     //start mobile app listener
     logger.debug("Starting mobile app service");
-    appSrv = new MobAppMgr(8000);
+    int srv_port = Ctx.get().getInt(Ctx.SRV_PORT, Ctx.SRV_PORT_DEF);
+    appSrv = new MobAppMgr(srv_port);
     logger.debug("Starting data pump");
     try {
       while (true) {
