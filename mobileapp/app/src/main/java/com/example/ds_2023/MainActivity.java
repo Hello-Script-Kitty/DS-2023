@@ -15,10 +15,14 @@ import android.view.View;
 import android.widget.Button;
 import android.widget.TextView;
 
+import java.io.BufferedReader;
 import java.io.File;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.net.Socket;
 import java.net.UnknownHostException;
+import java.util.Objects;
 
 public class MainActivity extends AppCompatActivity {
 
@@ -30,6 +34,8 @@ public class MainActivity extends AppCompatActivity {
     Button buttonSend;
     TextView label;
     Uri selectedGpx;
+
+    String gpxData;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -53,7 +59,6 @@ public class MainActivity extends AppCompatActivity {
 
                 startActivityForResult(intent,PICK_XML);
 
-
             }
         });
 
@@ -64,11 +69,15 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void onClick(View v) {
 
+                try {
+                    gpxData = readTextFromUri(selectedGpx);
+                } catch (IOException e) {
+                    throw new RuntimeException(e);
+                }
 
-                label.setText(selectedGpx.getPath());
-                File gpx = new File(selectedGpx.getPath());
+                Log.d(ACTIVITY_TAG, gpxData);
+                MyThread thread = new MyThread(gpxData);
 
-                MyThread thread = new MyThread(gpx);
                 thread.start();
 
 
@@ -82,11 +91,18 @@ public class MainActivity extends AppCompatActivity {
 
         if (requestCode == PICK_XML) {
             selectedGpx = data.getData();
-
-
         }
     }
 
-
-
+    private String readTextFromUri(Uri uri) throws IOException {
+        StringBuilder stringBuilder = new StringBuilder();
+        try (InputStream inputStream = getContentResolver().openInputStream(uri);
+             BufferedReader reader = new BufferedReader(new InputStreamReader(Objects.requireNonNull(inputStream)))) {
+            String line;
+            while ((line = reader.readLine()) != null) {
+                stringBuilder.append(line);
+            }
+        }
+        return stringBuilder.toString();
+    }
 }
