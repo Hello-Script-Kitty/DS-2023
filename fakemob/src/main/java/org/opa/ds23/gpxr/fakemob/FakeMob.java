@@ -12,7 +12,6 @@ import java.io.File;
 import java.io.IOException;
 import java.net.Socket;
 import java.nio.file.Files;
-import java.nio.file.Path;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -21,10 +20,10 @@ public class FakeMob {
   static final Logger logger = LogManager.getLogger(FakeMob.class);
   static final ExecutorService es = Executors.newCachedThreadPool();
 
-  public static void main(String[] args) {
+  public static void main(String[] args) throws InterruptedException {
     logger.debug("Sending " + args.length + " files...");
     for (String file : args) {
-      es.submit(() -> sendFile(new File(file)));
+      new Thread(() -> sendFile(new File(file))).start();
     }
   }
 
@@ -34,12 +33,12 @@ public class FakeMob {
       return;
     }
     Connection connection = null;
-    try (Socket sock = new Socket("localhost", 8000)) {
+    try {
       logger.debug("Sending " + f.getName());
-      connection = new Connection(sock, null, null);
+      //create connection
+      connection = new Connection(new Socket("localhost", 8000), null, null);
       es.execute(connection);
-      ActivityMsg act = new ActivityMsg();
-      act.gpxContent = Files.readString(Path.of("C:\\Utils\\tmp\\gpxs\\route1.gpx"));
+      ActivityMsg act = new ActivityMsg(Files.readString(f.toPath()));
       Message msg = new Message(Type.Activity, act.serialize());
       connection.send(msg.serialize());
       logger.debug("Done sending file " + f.getName());

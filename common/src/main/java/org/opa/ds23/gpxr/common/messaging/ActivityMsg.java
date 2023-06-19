@@ -9,6 +9,13 @@ import java.io.Serializable;
 public class ActivityMsg implements Serializable {
   private static final long serialVersionUID = -2207495884028426181L;
 
+  public ActivityMsg() {
+  }
+
+  public ActivityMsg(String gpx) {
+    gpxContent = gpx;
+  }
+
   public String gpxContent;
 
   public static ActivityMsg deserialize(byte[] data) throws IOException, ClassNotFoundException {

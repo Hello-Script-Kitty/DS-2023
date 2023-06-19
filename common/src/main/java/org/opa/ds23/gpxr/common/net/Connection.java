@@ -5,8 +5,6 @@ import org.opa.ds23.gpxr.utilities.Logger;
 
 import java.io.IOException;
 import java.net.Socket;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 import java.util.concurrent.SynchronousQueue;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
@@ -18,14 +16,21 @@ public class Connection implements Runnable {
   private static final Logger logger = LogManager.getLogger(Connection.class);
 
   private final Socket _s;
+  private volatile boolean _sending = false;
   private final Consumer<byte[]> _handler;
   private final Runnable _closeHandler;
   private volatile boolean shutdown = false;
   SynchronousQueue<byte[]> _out = new SynchronousQueue<>(true);
-  private final ExecutorService _execSrv = Executors.newCachedThreadPool();
+//  private final ExecutorService _execSrv = Executors.newCachedThreadPool();
 
   public Connection(Socket socket, Consumer<byte[]> msgHandler, Runnable closeHandler) {
     _s = socket;
+    _handler = msgHandler;
+    _closeHandler = closeHandler;
+  }
+
+  public Connection(String host, int port, Consumer<byte[]> msgHandler, Runnable closeHandler) throws IOException {
+    _s = new Socket(host, port);
     _handler = msgHandler;
     _closeHandler = closeHandler;
   }
@@ -52,7 +57,7 @@ public class Connection implements Runnable {
   public void run() {
     //launch sending thread
     logger.debug("Spawning send thread...");
-    _execSrv.execute(() -> {
+    Thread sender = new Thread(() -> {
       logger.debug("Starting sender loop");
       try {
         while (!shutdown) {
@@ -61,7 +66,10 @@ public class Connection implements Runnable {
           byte[] msg = _out.poll();
           if (msg != null) {
             logger.debug("Got outgoing message from queue");
+            _sending = true;
             Protocol.send(_s.getOutputStream(), msg);
+            _sending = false;
+            logger.debug("Outgoing message sent!");
           } else
             TimeUnit.MILLISECONDS.sleep(200);
         }
@@ -71,10 +79,15 @@ public class Connection implements Runnable {
 //        logger.error("Send thread polling interrupted");
       } catch (IOException e) {
 //        logger.error("Failed to send message through the socket");
+      } finally {
+        //ensure _sending is false now!
+        _sending = false;
       }
       //done
       logger.debug("Sender loop ended");
     });
+//    sender.setDaemon(true);
+    sender.start();
 
     logger.debug("Starting listening loop");
     //start listening for messages from the other side
@@ -91,10 +104,28 @@ public class Connection implements Runnable {
       }
 
       //fail if connection is down or thread has been interrupted
-      shutdown &= _s.isConnected() && !Thread.currentThread().isInterrupted();
+      if (!_s.isConnected() || Thread.currentThread().isInterrupted())
+        shutdown = true;
     }
     if (_closeHandler != null)
       _closeHandler.run();
+    //wait for any sending to finish
+    if (_sending)
+      logger.debug("Will wait for sending to finish...");
+    while (_sending) {
+      try {
+        TimeUnit.MILLISECONDS.sleep(100);
+      } catch (InterruptedException ignored) {
+        logger.debug("Send wait interrupted!");
+      }
+    }
+//    try {
+//      TimeUnit.MILLISECONDS.sleep(500);
+//    } catch (InterruptedException ignored) {
+//    } finally {
+//      _execSrv.shutdown();
+//      logger.debug("Listening loop was exited");
+//    }
     logger.debug("Listening loop was exited");
   }
 }
