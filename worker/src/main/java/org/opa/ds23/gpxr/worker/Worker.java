@@ -5,25 +5,21 @@ import org.opa.ds23.gpxr.common.data.ReductionResult;
 import org.opa.ds23.gpxr.common.messaging.Message;
 import org.opa.ds23.gpxr.common.messaging.Type;
 import org.opa.ds23.gpxr.common.net.Connection;
-import org.opa.ds23.gpxr.utilities.Exceptions;
-import org.opa.ds23.gpxr.utilities.LogManager;
-import org.opa.ds23.gpxr.utilities.Logger;
+import org.opa.ds23.gpxr.utilities.*;
 
 import java.io.IOException;
-import java.net.Socket;
-import java.util.concurrent.*;
+import java.util.concurrent.TimeUnit;
 
 /**
  * Main Worker Class (worker app entry point)
  */
 public class Worker {
   private static final Logger logger = LogManager.getLogger(Worker.class);
-  private final ExecutorService execSrv = Executors.newCachedThreadPool();
-  private final ExecutorService pool = Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors());
+  private final ThreadPool pool = new ThreadPool(Runtime.getRuntime().availableProcessors());
   Connection _con;
   volatile boolean shutdown = false;
 
-  public static void main(String[] args) throws IOException {
+  public static void main(String[] args) {
     if (args.length < 2) {
       logger.error("Insufficient parameters. Exiting!");
       return;
@@ -38,10 +34,11 @@ public class Worker {
   private void start(String host, int port) {
     //connect to server and listen for commands
     logger.debug("Connecting to Server...");
-    try (Socket sock = new Socket(host, port)) {
-      _con = new Connection(sock, this::messageHandler, this::closeHandler);
+    try (Connection con = new Connection(host, port, this::messageHandler, this::closeHandler)) {
+      _con = con;
       logger.debug("Connected! Initializing listener.");
-      execSrv.execute(_con);
+      Thread t = new Thread(con);
+      t.start();
       logger.debug("Waiting for workload...");
       while (!shutdown)
         TimeUnit.SECONDS.sleep(1);
@@ -66,24 +63,43 @@ public class Worker {
         return;
       }
       ActivityChunk work = ActivityChunk.deserialize(msg.data);
-      CompletableFuture.supplyAsync(() -> Calculator.calc(work), pool)
-        .thenAcceptAsync(r -> sendResult(r), execSrv);
+      process(work);
     } catch (Exception e) {
       logger.error("Error processing server message. Ignoring.");
       logger.error(Exceptions.getStackTrace(e));
     }
   }
 
-  private void sendResult(ReductionResult rc) {
+  /**
+   * Processes an activity chunk (submits it to the workers and sends back the result)
+   *
+   * @param work The workload to process
+   */
+  private void process(ActivityChunk work) {
+    //prepare locker for result
+    LockingContainer<ReductionResult> lc = new LockingContainer<>();
+    //submit to workers
+    pool.submit(() -> {
+      ReductionResult result = Calculator.calc(work);
+      lc.set(result);
+    });
+    //wait for the result and send it to the server
+    try {
+      ReductionResult rc = lc.waitTillSet();
+      sendResult(rc);
+    } catch (InterruptedException e) {
+      throw new RuntimeException(e);
+    }
+  }
+
+  private void sendResult(ReductionResult rc) throws InterruptedException {
     try {
       Message msg = new Message(Type.ReductionResult, rc.serialize());
-      _con.send(msg.serialize());
-    } catch (IOException | InterruptedException e) {
-      if (e instanceof IOException)
-        logger.error("Error during result serialization");
-      else
-        logger.error("Error during result message submission to send");
-      throw new CompletionException(e);
+      byte[] ser = msg.serialize();
+      _con.send(ser);
+    } catch (IOException e) {
+      logger.error("Error during result serialization");
+      throw new RuntimeException(e);
     }
   }
 }
