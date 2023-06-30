@@ -8,6 +8,7 @@ import org.opa.ds23.gpxr.common.messaging.Message;
 import org.opa.ds23.gpxr.common.messaging.Type;
 import org.opa.ds23.gpxr.common.net.Connection;
 import org.opa.ds23.gpxr.utilities.Exceptions;
+import org.opa.ds23.gpxr.utilities.LockingContainer;
 import org.opa.ds23.gpxr.utilities.LogManager;
 import org.opa.ds23.gpxr.utilities.Logger;
 
@@ -15,8 +16,6 @@ import java.io.IOException;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.*;
-import java.util.concurrent.*;
-import java.util.function.Supplier;
 
 /**
  * Worker Manager
@@ -26,6 +25,7 @@ import java.util.function.Supplier;
  * Each worker gets its own service port for sending back workload results
  */
 public class WorkerMgr {
+
   private static final Logger logger = LogManager.getLogger(WorkerMgr.class);
   private final Thread _listener;
 
@@ -33,12 +33,12 @@ public class WorkerMgr {
   private ServerSocket _srv;
 
   //hold available workers
-  private final BlockingQueue<WorkerHandler> _workers = new LinkedBlockingQueue<>();
+  private final Queue<WorkerHandler> _workers = new LinkedList<>();
   //hold result futures
-  private final ConcurrentMap<String, CompletableFuture<ReductionResult>> _results = new ConcurrentHashMap<>();
+  private final Map<String, LockingContainer<ReductionResult>> _results = new HashMap<>();
 
   /**
-   * Initialize with the comm port
+   * Initialize with the TCP port
    *
    * @param port Worker manager control port
    */
@@ -48,21 +48,22 @@ public class WorkerMgr {
     _srv = new ServerSocket(port);
     _srv.setReuseAddress(true);
     _listener = new Thread(new Srv());
-    Ctx.es.execute(_listener);
+    _listener.start();
   }
 
   /**
    * Submit a list of workloads to the workers
    *
-   * @param workloads A list of workloads to submit
+   * @param act An activity to split among the workers
    * @return A list of Futures for the results
    */
-  synchronized CompletableFuture<ReductionResult>[] submitReductions(List<ActivityChunk> workloads) throws IOException, InterruptedException {
-    List<CompletableFuture<ReductionResult>> fl = new ArrayList<>(workloads.size());
+  synchronized LockingContainer<ReductionResult>[] submitReductions(Activity act) throws IOException, InterruptedException {
+    List<ActivityChunk> workloads = DataUtils.toChunks(act, _workers.size());
+    List<LockingContainer<ReductionResult>> fl = new ArrayList<>(workloads.size());
     for (ActivityChunk chunk : workloads) {
       fl.add(submitReduction(chunk));
     }
-    return fl.toArray(new CompletableFuture[0]);
+    return fl.toArray(new LockingContainer[0]);
   }
 
   /**
@@ -71,13 +72,14 @@ public class WorkerMgr {
    * @param workload The workload
    * @return A Future for the result
    */
-  synchronized CompletableFuture<ReductionResult> submitReduction(ActivityChunk workload) {
-    CompletableFuture<ReductionResult> f = new CompletableFuture<>();
-    try {
-      send(workload);
-    } catch (IOException | InterruptedException e) {
-      f.completeExceptionally(e);
-    }
+  synchronized LockingContainer<ReductionResult> submitReduction(ActivityChunk workload) throws IOException,
+    InterruptedException {
+    LockingContainer<ReductionResult> f = new LockingContainer<>();
+//    try {
+    send(workload);
+//    } catch (IOException | InterruptedException e) {
+//      f.completeExceptionally(e);
+//    }
     _results.put(workload.chunkId, f);
     return f;
   }
@@ -88,7 +90,7 @@ public class WorkerMgr {
    * @param workload
    */
   private void send(ActivityChunk workload) throws IOException, InterruptedException {
-    //get next worker
+    //get the next worker
     WorkerHandler w = _workers.remove();
     //send workload
     w.send(workload);
@@ -97,18 +99,11 @@ public class WorkerMgr {
   }
 
   private synchronized void handleChunk(ReductionResult chunk) {
-    CompletableFuture<ReductionResult> f = _results.remove(chunk.chunkId);
+    LockingContainer<ReductionResult> f = _results.remove(chunk.chunkId);
     if (f != null)
-      if (f.isCancelled() || f.isCompletedExceptionally())
-        logger.error("ReductionChuck received for canceled or excepted future");
-      else
-        f.complete(chunk);
+      f.set(chunk);
     else
       logger.error("ReductionChuck received for unknown chunk");
-  }
-
-  public int size() {
-    return _workers.size();
   }
 
   /**
@@ -140,12 +135,12 @@ public class WorkerMgr {
     public void run() {
       while (true) {
         try {
-          Socket c = _srv.accept();
-          //spawn handling mechanism
-          WorkerHandler ch = new WorkerHandler(c);
-          _workers.add(ch); //keep worker
-//          Connection con = new Connection(c, ch::messageHandler);
-//          execSrv.submit(con);
+          synchronized (_workers) {
+            Socket c = _srv.accept();
+            //spawn handling mechanism
+            WorkerHandler ch = new WorkerHandler(c);
+            _workers.add(ch); //keep worker
+          }
         } catch (IOException e) {
           logger.error("Failed to accept connection");
         }
@@ -162,12 +157,15 @@ public class WorkerMgr {
 
     public WorkerHandler(Socket c) {
       con = new Connection(c, this::messageHandler, this::closeHandler);
-      Ctx.es.execute(con);
+      Thread t = new Thread(con);
+      t.start();
     }
 
     private void closeHandler() {
-      //remove self from available workers
-      _workers.remove(this);
+      synchronized (_workers) {
+        //remove self from available workers
+        _workers.remove(this);
+      }
     }
 
     /**

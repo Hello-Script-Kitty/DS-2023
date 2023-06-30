@@ -6,6 +6,7 @@ import org.opa.ds23.gpxr.common.messaging.Message;
 import org.opa.ds23.gpxr.common.messaging.Type;
 import org.opa.ds23.gpxr.common.net.Protocol;
 import org.opa.ds23.gpxr.utilities.Exceptions;
+import org.opa.ds23.gpxr.utilities.LockingContainer;
 import org.opa.ds23.gpxr.utilities.LogManager;
 import org.opa.ds23.gpxr.utilities.Logger;
 
@@ -15,8 +16,10 @@ import java.io.IOException;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.ArrayList;
+import java.util.LinkedList;
 import java.util.List;
-import java.util.concurrent.*;
+import java.util.Queue;
+import java.util.concurrent.TimeoutException;
 
 /**
  * Main Server Class (server app entry point)
@@ -27,7 +30,7 @@ public class Srv {
   private WorkerMgr wm;
   private static Srv app;
   private final MobAppMgr appSrv;
-  private BlockingQueue<Activity> incoming = new LinkedBlockingQueue<>();
+  private Queue<Activity> incoming = new LinkedList<>();
 
   private Srv() throws IOException, InterruptedException {
     //launch worker manager
@@ -42,7 +45,7 @@ public class Srv {
     logger.debug("Starting data pump");
     try {
       while (true) {
-        TimeUnit.MILLISECONDS.sleep(100);
+        Thread.sleep(100);
         if (incoming.size() > 0) {
           Activity data = incoming.remove();
           //convert to single chunk and send to a worker
@@ -74,13 +77,13 @@ public class Srv {
    * @param act The {@link Activity} to update
    * @param all The related {@link ReductionResult}s
    */
-  private void updateActivity(Activity act, CompletableFuture<ReductionResult>[] all) {
+  private void updateActivity(Activity act, LockingContainer<ReductionResult>[] all) {
     logger.debug("Reducing results for activity " + act.id);
     List<ReductionResult> results = new ArrayList<>(all.length);
-    for (CompletableFuture<ReductionResult> cf_res : all) {
+    for (LockingContainer<ReductionResult> cf_res : all) {
       try {
-        results.add(cf_res.get());
-      } catch (InterruptedException | ExecutionException ignored) {
+        results.add(cf_res.waitTillSet());
+      } catch (InterruptedException | TimeoutException ignored) {
       }
     }
     ReductionResult r = results.stream().reduce(new ReductionResult(act), (p, n) -> {
@@ -115,17 +118,19 @@ public class Srv {
       _srv = new ServerSocket(port);
       _srv.setReuseAddress(true);
       //spawn listening thread
-      Ctx.es.execute(() -> {
+      Thread listener = new Thread(() -> {
         while (true) {
           try {
             Socket c = _srv.accept();
             //spawn simple handling mechanism
-            Ctx.es.execute(() -> connectionHandler(c));
+            Thread tch = new Thread(() -> connectionHandler(c));
+            tch.start();
           } catch (IOException e) {
             logger.error("Failed to accept a connection. Ignoring.");
           }
         }
       });
+      listener.start();
     }
 
     private void connectionHandler(Socket c) {
@@ -146,27 +151,19 @@ public class Srv {
           Ctx.activities.put(act.id, act);
         }
         logger.debug("Submitting activity to workers");
-        //break into chunks
-        List<ActivityChunk> chunks = DataUtils.toChunks(act, wm.size());
         //submit for processing
-        CompletableFuture<ReductionResult>[] all = wm.submitReductions(chunks);
+        LockingContainer<ReductionResult>[] all = wm.submitReductions(act);
         logger.debug("Waiting for results");
         try {
-          CompletableFuture.allOf(all).get(5, TimeUnit.MINUTES);
+          for (int i = 0; i < all.length; i++) {
+            all[i].waitTillSet(5000 * 60);
+          }
         } catch (TimeoutException e) {
           synchronized (logger) {
             logger.error("Workload processing timed out");
             logger.error("Activity id: " + act.id);
             logger.error("Activity creator: " + act.creator);
             logger.error("Activity date: " + act.date);
-          }
-        } catch (ExecutionException e) {
-          synchronized (logger) {
-            logger.error("Some workload processing experienced an error");
-            logger.error("Activity id: " + act.id);
-            logger.error("Activity creator: " + act.creator);
-            logger.error("Activity date: " + act.date);
-            logger.error(Exceptions.getStackTrace(e));
           }
         }
         //reduce results -> update activity

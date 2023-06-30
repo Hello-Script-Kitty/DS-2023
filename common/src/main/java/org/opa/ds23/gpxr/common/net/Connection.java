@@ -5,6 +5,8 @@ import org.opa.ds23.gpxr.utilities.Logger;
 
 import java.io.IOException;
 import java.net.Socket;
+import java.util.LinkedList;
+import java.util.Queue;
 import java.util.concurrent.SynchronousQueue;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
@@ -20,8 +22,7 @@ public class Connection implements Runnable, AutoCloseable {
   private final Consumer<byte[]> _handler;
   private final Runnable _closeHandler;
   private volatile boolean shutdown = false;
-  SynchronousQueue<byte[]> _out = new SynchronousQueue<>(true);
-//  private final ExecutorService _execSrv = Executors.newCachedThreadPool();
+  Queue<byte[]> _out = new LinkedList<>();
 
   public Connection(Socket socket, Consumer<byte[]> msgHandler, Runnable closeHandler) {
     _s = socket;
@@ -46,7 +47,7 @@ public class Connection implements Runnable, AutoCloseable {
       return;
     }
     logger.debug("Queuing a message for send");
-    _out.put(message);
+    _out.add(message);
   }
 
   public void shutdown() {
@@ -63,7 +64,10 @@ public class Connection implements Runnable, AutoCloseable {
         while (!shutdown) {
 //          logger.debug("Polling for message to send");
           //we poll the queue at intervals so that we can also check the shutdown flag
-          byte[] msg = _out.poll();
+          byte[] msg;
+          synchronized (_out) {
+            msg = _out.poll();
+          }
           if (msg != null) {
             logger.debug("Got outgoing message from queue");
             _sending = true;

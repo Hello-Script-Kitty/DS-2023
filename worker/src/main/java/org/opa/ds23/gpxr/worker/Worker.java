@@ -9,6 +9,7 @@ import org.opa.ds23.gpxr.utilities.*;
 
 import java.io.IOException;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 
 /**
  * Main Worker Class (worker app entry point)
@@ -87,7 +88,7 @@ public class Worker {
     try {
       ReductionResult rc = lc.waitTillSet();
       sendResult(rc);
-    } catch (InterruptedException e) {
+    } catch (InterruptedException | TimeoutException e) {
       throw new RuntimeException(e);
     }
   }
