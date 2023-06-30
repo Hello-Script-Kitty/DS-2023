@@ -12,7 +12,7 @@ import java.util.function.Consumer;
 /**
  * Manages an open connection through a socket (1-to-1 connection). Can send and/or receive "messages".
  */
-public class Connection implements Runnable {
+public class Connection implements Runnable, AutoCloseable {
   private static final Logger logger = LogManager.getLogger(Connection.class);
 
   private final Socket _s;
@@ -127,5 +127,10 @@ public class Connection implements Runnable {
 //      logger.debug("Listening loop was exited");
 //    }
     logger.debug("Listening loop was exited");
+  }
+
+  @Override
+  public void close() throws Exception {
+    shutdown();
   }
 }

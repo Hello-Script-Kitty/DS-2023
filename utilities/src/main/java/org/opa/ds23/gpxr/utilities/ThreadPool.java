@@ -2,12 +2,22 @@ package org.opa.ds23.gpxr.utilities;
 
 import java.util.LinkedList;
 
+/**
+ * A primitive {@link java.util.concurrent.ThreadPoolExecutor} (no fluff)
+ */
 public class ThreadPool {
   private final PoolWorker[] threads;
   private final LinkedList<Runnable> taskQueue;
   private volatile boolean terminated = false;
 
+  /**
+   * Creates the pool with the specified number of worker threads.
+   *
+   * @param threadCount The number of worker threads (must be >0)
+   */
   public ThreadPool(int threadCount) {
+    if (threadCount < 1)
+      throw new IllegalArgumentException("Invalid number of threads");
     taskQueue = new LinkedList<>();
     threads = new PoolWorker[threadCount];
 
@@ -19,6 +29,11 @@ public class ThreadPool {
     }
   }
 
+  /**
+   * Queues a task for execution by the workers
+   *
+   * @param task The task to execute
+   */
   public void submit(Runnable task) {
     //do not accept tasks if terminated
     if (terminated)
@@ -29,6 +44,11 @@ public class ThreadPool {
     }
   }
 
+  /**
+   * Waits for all tasks to finish and all workers to terminate
+   *
+   * @throws InterruptedException In case the current thread is terminated
+   */
   public void terminate() throws InterruptedException {
     terminated = true; //raise termination flag
     //notify all threads (wake them up)
@@ -41,57 +61,40 @@ public class ThreadPool {
     }
   }
 
+  /**
+   * Pool worker. Retrieves available incoming tasks for execution.
+   */
   private class PoolWorker extends Thread {
 
-    private String name;
-
-    private void msg(String msg) {
-      System.out.printf("Worker %s says: \"%s\"%n", name, msg);
-    }
-
     public void run() {
-      name = Thread.currentThread().getName();
-//      msg("starting");
       Runnable task;
 
       while (true) {
-//        msg("entering sync block");
-//        msg("t=" + terminated);
         synchronized (taskQueue) {
-//          msg("entering poll/wait loop");
           while (taskQueue.isEmpty()) {
             if (terminated)
               break;
-//            msg("t=" + terminated);
             try {
               taskQueue.wait();
-//              msg("going woke");
-//              msg("t=" + terminated);
             } catch (InterruptedException e) {
               System.err.println("An error occurred while queue is waiting: " + e.getMessage());
             }
           }
           task = taskQueue.poll(); //will be null sometime after termination
-//          msg(task != null ? "got task" : "null task");
-//          msg("t=" + terminated);
         }
         if (task == null && terminated) {
-//          msg("no task and 'terminated'... exiting");
           break;
         }
 
         // prevent thread leaks
         try {
           if (task != null) {
-//            msg("running task");
-//            msg("t=" + terminated);
             task.run();
           }
         } catch (RuntimeException e) {
           System.err.println("Thread pool is interrupted due to an issue: " + e.getMessage());
         }
       }
-//      msg("finished");
     }
   }
 }
