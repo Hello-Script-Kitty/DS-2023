@@ -43,7 +43,7 @@ public class FakeMob {
       connection.send(msg.serialize());
       logger.debug("Done sending file " + f.getName());
     } catch (IOException | InterruptedException e) {
-      logger.error("An error occured while sending " + f.getName());
+      logger.error("An error occurred while sending " + f.getName());
       logger.error(Exceptions.getStackTrace(e));
     }
   }

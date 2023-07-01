@@ -1,17 +1,18 @@
 package org.opa.ds23.gpxr.utilities;
 
 import java.util.Random;
+import java.util.concurrent.TimeoutException;
 
 public class LatchTest {
 
-  public static void main(String[] args) throws InterruptedException {
+  public static void main(String[] args) throws InterruptedException, TimeoutException {
 //    one(1000);
 //    many(100);
     inverse();
   }
 
   //find bug when finishing before we've asked for the data
-  private static void inverse() throws InterruptedException {
+  private static void inverse() throws InterruptedException, TimeoutException {
     LockingContainer<String> stuff = new LockingContainer<>();
     Thread calculator = getCalculator(stuff, 10);
     calculator.start();
@@ -55,7 +56,7 @@ public class LatchTest {
       String result = null;
       try {
         result = stuff.waitTillSet();
-      } catch (InterruptedException e) {
+      } catch (InterruptedException | TimeoutException e) {
         System.err.println("Awaiter error: " + e.getMessage());
       }
       System.out.printf("Result: %s%n", result);
