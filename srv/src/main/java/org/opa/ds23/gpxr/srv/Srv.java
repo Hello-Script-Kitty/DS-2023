@@ -155,8 +155,9 @@ public class Srv {
         LockingContainer<ReductionResult>[] all = wm.submitReductions(act);
         logger.debug("Waiting for results");
         try {
-          for (int i = 0; i < all.length; i++) {
-            all[i].waitTillSet(5000 * 60);
+          //"join"
+          for (LockingContainer<ReductionResult> lc : all) {
+            lc.waitTillSet(5000 * 60);
           }
         } catch (TimeoutException e) {
           synchronized (logger) {

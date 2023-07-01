@@ -57,12 +57,16 @@ public class WorkerMgr {
    * @param act An activity to split among the workers
    * @return A list of Futures for the results
    */
-  synchronized LockingContainer<ReductionResult>[] submitReductions(Activity act) throws IOException, InterruptedException {
+  synchronized LockingContainer<ReductionResult>[] submitReductions(Activity act) throws IOException,
+    InterruptedException {
     List<ActivityChunk> workloads = DataUtils.toChunks(act, _workers.size());
     List<LockingContainer<ReductionResult>> fl = new ArrayList<>(workloads.size());
+//    logger.debug("Submitting " + workloads.size() + " workloads");
     for (ActivityChunk chunk : workloads) {
+//      logger.debug("Submitting workload");
       fl.add(submitReduction(chunk));
     }
+//    logger.debug("Done submitting workloads");
     return fl.toArray(new LockingContainer[0]);
   }
 
@@ -75,11 +79,7 @@ public class WorkerMgr {
   synchronized LockingContainer<ReductionResult> submitReduction(ActivityChunk workload) throws IOException,
     InterruptedException {
     LockingContainer<ReductionResult> f = new LockingContainer<>();
-//    try {
     send(workload);
-//    } catch (IOException | InterruptedException e) {
-//      f.completeExceptionally(e);
-//    }
     _results.put(workload.chunkId, f);
     return f;
   }
