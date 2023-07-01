@@ -7,7 +7,6 @@ import java.io.IOException;
 import java.net.Socket;
 import java.util.LinkedList;
 import java.util.Queue;
-import java.util.concurrent.SynchronousQueue;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 
@@ -21,8 +20,8 @@ public class Connection implements Runnable, AutoCloseable {
   private volatile boolean _sending = false;
   private final Consumer<byte[]> _handler;
   private final Runnable _closeHandler;
-  private volatile boolean shutdown = false;
-  Queue<byte[]> _out = new LinkedList<>();
+  private volatile boolean _shutdown = false;
+  private final Queue<byte[]> _out = new LinkedList<>();
 
   public Connection(Socket socket, Consumer<byte[]> msgHandler, Runnable closeHandler) {
     _s = socket;
@@ -41,17 +40,20 @@ public class Connection implements Runnable, AutoCloseable {
    *
    * @param message The message to queue for sending
    */
-  public synchronized void send(byte[] message) throws InterruptedException {
-    if (shutdown) {
+  public void send(byte[] message) throws InterruptedException {
+    if (_shutdown) {
       logger.debug("Will not queue message during shutdown");
       return;
     }
     logger.debug("Queuing a message for send");
-    _out.add(message);
+    synchronized (_out) {
+      _out.add(message);
+      _sending = true;
+    }
   }
 
   public void shutdown() {
-    shutdown = true;
+    _shutdown = true;
   }
 
   @Override
@@ -61,21 +63,22 @@ public class Connection implements Runnable, AutoCloseable {
     Thread sender = new Thread(() -> {
       logger.debug("Starting sender loop");
       try {
-        while (!shutdown) {
+        while (!_shutdown) {
 //          logger.debug("Polling for message to send");
           //we poll the queue at intervals so that we can also check the shutdown flag
           byte[] msg;
           synchronized (_out) {
             msg = _out.poll();
+            if (msg != null) {
+              logger.debug("Got outgoing message from queue");
+              _sending = true;
+              Protocol.send(_s.getOutputStream(), msg);
+              if (_out.isEmpty())
+                _sending = false;
+              logger.debug("Outgoing message sent!");
+            } else
+              TimeUnit.MILLISECONDS.sleep(200);
           }
-          if (msg != null) {
-            logger.debug("Got outgoing message from queue");
-            _sending = true;
-            Protocol.send(_s.getOutputStream(), msg);
-            _sending = false;
-            logger.debug("Outgoing message sent!");
-          } else
-            TimeUnit.MILLISECONDS.sleep(200);
         }
         logger.debug("Sender loop terminated");
       } catch (InterruptedException e) {
@@ -95,7 +98,7 @@ public class Connection implements Runnable, AutoCloseable {
 
     logger.debug("Starting listening loop");
     //start listening for messages from the other side
-    while (!shutdown) {
+    while (!_shutdown) {
       try {
         byte[] msg = Protocol.receive(_s.getInputStream());
         logger.debug("Received message");
@@ -109,7 +112,7 @@ public class Connection implements Runnable, AutoCloseable {
 
       //fail if connection is down or thread has been interrupted
       if (!_s.isConnected() || Thread.currentThread().isInterrupted())
-        shutdown = true;
+        _shutdown = true;
     }
     if (_closeHandler != null)
       _closeHandler.run();
@@ -134,7 +137,7 @@ public class Connection implements Runnable, AutoCloseable {
   }
 
   @Override
-  public void close() throws Exception {
+  public void close() {
     shutdown();
   }
 }
