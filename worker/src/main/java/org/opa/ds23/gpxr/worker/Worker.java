@@ -42,7 +42,7 @@ public class Worker {
       t.start();
       logger.debug("Waiting for workload...");
       while (!shutdown)
-        TimeUnit.SECONDS.sleep(1);
+        TimeUnit.MILLISECONDS.sleep(100);
     } catch (Exception e) {
       logger.error("Error occurred during worker startup");
       logger.error(Exceptions.getStackTrace(e));
@@ -77,6 +77,8 @@ public class Worker {
    * @param work The workload to process
    */
   private void process(ActivityChunk work) {
+    logger.debug("Got workload " + work.chunkId + "/" + work.activityId + " with " + work.waypoints.size() + " " +
+      "waypoints");
     //prepare locker for result
     LockingContainer<ReductionResult> lc = new LockingContainer<>();
     //submit to workers
