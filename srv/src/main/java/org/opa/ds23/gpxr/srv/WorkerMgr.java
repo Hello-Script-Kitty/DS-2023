@@ -61,7 +61,7 @@ public class WorkerMgr {
     InterruptedException {
     List<ActivityChunk> workloads = DataUtils.toChunks(act, _workers.size());
     List<LockingContainer<ReductionResult>> fl = new ArrayList<>(workloads.size());
-//    logger.debug("Submitting " + workloads.size() + " workloads");
+    logger.debug("Activity " + act.id + " split into " + workloads.size() + " chunks");
     for (ActivityChunk chunk : workloads) {
 //      logger.debug("Submitting workload");
       fl.add(submitReduction(chunk));
@@ -93,15 +93,18 @@ public class WorkerMgr {
     //get the next worker
     WorkerHandler w = _workers.remove();
     //send workload
+    logger.debug("Sending workload " + workload.chunkId + "/" + workload.activityId + "to worker " + w.id);
     w.send(workload);
     //put worker at the end of the queue
     _workers.offer(w);
   }
 
   private synchronized void handleChunk(ReductionResult chunk) {
+    logger.debug("Received result for " + chunk.chunkId + "/" + chunk.activityId);
     LockingContainer<ReductionResult> f = _results.remove(chunk.chunkId);
-    if (f != null)
+    if (f != null) {
       f.set(chunk);
+    }
     else
       logger.error("ReductionChuck received for unknown chunk");
   }
@@ -135,11 +138,12 @@ public class WorkerMgr {
     public void run() {
       while (true) {
         try {
+          Socket c = _srv.accept();
           synchronized (_workers) {
-            Socket c = _srv.accept();
             //spawn handling mechanism
             WorkerHandler ch = new WorkerHandler(c);
             _workers.add(ch); //keep worker
+            logger.debug("New worker enrolled. Workers: " + _workers.size());
           }
         } catch (IOException e) {
           logger.error("Failed to accept connection");
@@ -165,6 +169,7 @@ public class WorkerMgr {
       synchronized (_workers) {
         //remove self from available workers
         _workers.remove(this);
+        logger.debug("Worker lost. Workers: " + _workers.size());
       }
     }
 
