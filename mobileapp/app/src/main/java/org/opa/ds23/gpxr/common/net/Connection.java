@@ -63,22 +63,22 @@ public class Connection implements Runnable, AutoCloseable {
     Thread sender = new Thread(() -> {
       logger.debug("Starting sender loop");
       try {
-        while (!_shutdown) {
+        while (!_shutdown || _sending) {
 //          logger.debug("Polling for message to send");
           //we poll the queue at intervals so that we can also check the shutdown flag
           byte[] msg;
           synchronized (_out) {
             msg = _out.poll();
-          if (msg != null) {
-            logger.debug("Got outgoing message from queue");
+            if (msg != null) {
+              logger.debug("Got outgoing message from queue");
               _sending = true;
-            Protocol.send(_s.getOutputStream(), msg);
-              if (_out.isEmpty())
-                _sending = false;
+              Protocol.send(_s.getOutputStream(), msg);
               logger.debug("Outgoing message sent!");
-          } else
-            TimeUnit.MILLISECONDS.sleep(200);
-        }
+            }
+            if (_out.isEmpty())
+              _sending = false;
+          }
+          TimeUnit.MILLISECONDS.sleep(200);
         }
         logger.debug("Sender loop terminated");
       } catch (InterruptedException e) {
