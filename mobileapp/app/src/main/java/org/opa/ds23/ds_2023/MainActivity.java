@@ -1,27 +1,23 @@
-package com.example.ds_2023;
+package org.opa.ds23.ds_2023;
 
+import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 
-import android.app.Activity;
-import android.content.ContentResolver;
 import android.content.Intent;
-import android.database.Cursor;
 import android.net.Uri;
 import android.os.Bundle;
-import android.provider.DocumentsContract;
-import android.provider.OpenableColumns;
+import android.os.Handler;
+import android.os.Looper;
+import android.os.Message;
 import android.util.Log;
 import android.view.View;
 import android.widget.Button;
 import android.widget.TextView;
 
 import java.io.BufferedReader;
-import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
-import java.net.Socket;
-import java.net.UnknownHostException;
 import java.util.Objects;
 
 public class MainActivity extends AppCompatActivity {
@@ -34,13 +30,24 @@ public class MainActivity extends AppCompatActivity {
     Button buttonSend;
     TextView label;
     Uri selectedGpx;
-
+    Handler handler;
     String gpxData;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+
+        handler = new Handler(Looper.getMainLooper(), new Handler.Callback() {
+            @Override
+            public boolean handleMessage(@NonNull Message message) {
+                //ReductionResult result = message.getData().getSerializable("result",ReductionResult.class);
+
+                //label.setText(result);
+
+                return true;
+            }
+        });
 
         buttonPick = (Button) findViewById(R.id.button_pick);
         label = (TextView) findViewById(R.id.label);
@@ -76,10 +83,9 @@ public class MainActivity extends AppCompatActivity {
                 }
 
                 Log.d(ACTIVITY_TAG, gpxData);
-                MyThread thread = new MyThread(gpxData);
+                MyThread thread = new MyThread(gpxData, handler);
 
                 thread.start();
-
 
             }
         });
